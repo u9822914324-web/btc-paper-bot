@@ -22,6 +22,8 @@ jobs:
         with:
           python-version: "3.12"
       - run: python bot.py test
+      - name: Check price feed
+        run: python -c "import bot; print('price, 1h high:', bot.fetch())"
       - run: python -u bot.py
         env:
           RUN_SECONDS: "21000"   # 5h50m, leaves time to save before GitHub's 6h limit
