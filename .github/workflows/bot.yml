@@ -24,14 +24,16 @@ jobs:
       - run: python bot.py test
       - name: Check price feed
         run: python -c "import bot; print('price, 1h high:', bot.fetch())"
+      - run: |
+          git config user.name "paper-bot"
+          git config user.email "paper-bot@users.noreply.github.com"
       - run: python -u bot.py
         env:
           RUN_SECONDS: "21000"   # 5h50m, leaves time to save before GitHub's 6h limit
+          PUSH: "1"              # bot pushes the scoreboard (README.md) every hour + every trade
       - name: Save trades
         if: always()
         run: |
-          git config user.name "paper-bot"
-          git config user.email "paper-bot@users.noreply.github.com"
           git add -A
           git commit -m "bot: save trades" || exit 0
           git pull --rebase
