@@ -1,0 +1,36 @@
+name: paper bot
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"   # new run every 6 hours
+  workflow_dispatch:         # "Run workflow" button to start it by hand
+
+concurrency:
+  group: bot                 # never two bots at once; next run waits for the last
+  cancel-in-progress: false
+
+permissions:
+  contents: write            # lets the bot save state.json and trades.log back to the repo
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: python bot.py test
+      - run: python -u bot.py
+        env:
+          RUN_SECONDS: "21000"   # 5h50m, leaves time to save before GitHub's 6h limit
+      - name: Save trades
+        if: always()
+        run: |
+          git config user.name "paper-bot"
+          git config user.email "paper-bot@users.noreply.github.com"
+          git add -A
+          git commit -m "bot: save trades" || exit 0
+          git pull --rebase
+          git push
