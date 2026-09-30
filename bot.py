@@ -54,18 +54,20 @@ def step(s, price, high, now):
     pnl = value - s["cost"]
     if -STOP_LOSS < pnl < TAKE_PROFIT:
         return None
-    s["cash"], s["btc"] = value, 0.0
+    s["cash"] = min(value, START_CASH)  # trade at most $50 next time
+    s["saved"] += value - s["cash"]     # anything above $50 set aside, never traded again
+    s["btc"] = 0.0
     if pnl > 0:
         s["wins"] += 1
-        return f"SELL @ {price:,.2f}  profit ${pnl:+.2f}  cash ${value:.2f}"
+        return f"SELL @ {price:,.2f}  profit ${pnl:+.2f}  saved ${s['saved']:.2f}"
     s["losses"] += 1
     s["wait_until"] = now + COOLDOWN
-    return f"SAFETY EXIT @ {price:,.2f}  loss ${pnl:+.2f}  cash ${value:.2f}"
+    return f"SAFETY EXIT @ {price:,.2f}  loss ${pnl:+.2f}  now trading ${s['cash']:.2f}"
 
 
 def report(s, price):
     """Write README.md, the scoreboard shown on the GitHub page."""
-    worth = s["cash"] + s["btc"] * price * (1 - FEE)
+    worth = s["cash"] + s["saved"] + s["btc"] * price * (1 - FEE)
     profit = worth - START_CASH
     doing = f"holding BTC (bought for ${s['cost']:.2f})" if s["btc"] else "waiting to buy"
     recent = LOG.read_text().splitlines()[::-1][:10] if LOG.exists() else ["no trades yet"]
@@ -75,6 +77,7 @@ def report(s, price):
         "| | |\n|---|---|\n"
         f"| Started with | ${START_CASH:.2f} |\n"
         f"| Worth now | **${worth:.2f}** |\n"
+        f"| Saved (profit set aside, never traded) | **${s['saved']:.2f}** |\n"
         f"| Profit | **{'+' if profit >= 0 else '-'}${abs(profit):.2f}** ({profit / START_CASH:+.2%}) |\n"
         f"| Wins / safety exits | {s['wins']} / {s['losses']} |\n"
         f"| Right now | {doing} |\n"
@@ -82,6 +85,7 @@ def report(s, price):
         f"| Updated | {datetime.now(timezone.utc):%Y-%m-%d %H:%M} UTC (every hour + every trade) |\n\n"
         "## Last 10 trades (newest first)\n\n```\n" + "\n".join(recent) + "\n```\n\n"
         "## How it works\n\n"
+        f"- Trades ${START_CASH:.0f} each time; profit above that is set aside, never traded\n"
         f"- Buys when BTC drops {DIP:.1%} below its 1-hour high\n"
         f"- Sells when up ${TAKE_PROFIT:.2f} after fees ({FEE:.1%} per trade)\n"
         f"- Safety exit if down ${STOP_LOSS:.2f}, then waits {COOLDOWN // 60} min before buying again\n")
@@ -90,6 +94,7 @@ def report(s, price):
 def main():
     s = json.loads(STATE.read_text()) if STATE.exists() else {
         "cash": START_CASH, "btc": 0.0, "cost": 0.0, "wait_until": 0, "wins": 0, "losses": 0}
+    s.setdefault("saved", 0.0)  # older state files have no savings bucket
     print(f"Paper bot running with FAKE money. Ctrl+C to stop. Trades go to {LOG.name}")
     end = time.time() + RUN_SECONDS if RUN_SECONDS else float("inf")
     last_report = 0
@@ -113,7 +118,7 @@ def main():
             if os.environ.get("PUSH"):  # cloud: put the scoreboard on the GitHub page
                 subprocess.run("git add -A && git commit -qm 'bot: update scoreboard' "
                                "&& git pull -q --rebase && git push -q", shell=True)
-        worth = s["cash"] + s["btc"] * price * (1 - FEE)
+        worth = s["cash"] + s["saved"] + s["btc"] * price * (1 - FEE)
         status = "holding BTC" if s["btc"] else "waiting to buy"
         print(f"BTC ${price:,.2f} | {status} | worth ${worth:.2f} | "
               f"wins {s['wins']} losses {s['losses']}   ", end="\r")
@@ -121,17 +126,19 @@ def main():
 
 
 def test():
-    s = {"cash": 50.0, "btc": 0.0, "cost": 0.0, "wait_until": 0, "wins": 0, "losses": 0}
+    s = {"cash": 50.0, "saved": 0.0, "btc": 0.0, "cost": 0.0, "wait_until": 0, "wins": 0, "losses": 0}
     assert step(s, 100_000, 100_000, 0) is None                    # no dip: wait
     assert step(s, 98_900, 100_000, 0).startswith("BUY")           # 1.1% dip: buy
     assert step(s, 99_000, 100_000, 0) is None                     # up, but fees not covered
     assert step(s, 99_400, 100_000, 0).startswith("SELL")          # +$0.15 after fees
-    assert s["cash"] > 50.10 and s["wins"] == 1
+    assert s["cash"] == 50.0 and s["saved"] > 0.10 and s["wins"] == 1  # profit set aside
     assert step(s, 98_000, 100_000, 0).startswith("BUY")
+    assert s["cost"] == 50.0                                       # trades $50, not $50.15
     assert step(s, 94_000, 100_000, 0).startswith("SAFETY")        # -$2.14: bail out
-    assert s["losses"] == 1 and s["btc"] == 0
+    assert s["losses"] == 1 and s["btc"] == 0 and s["cash"] < 50
     assert step(s, 90_000, 100_000, 10) is None                    # cooldown blocks rebuy
     assert step(s, 90_000, 100_000, COOLDOWN + 1).startswith("BUY")
+    assert s["cost"] < 50 and s["saved"] > 0.10                    # saved money never traded
     print("all tests passed")
 
 
