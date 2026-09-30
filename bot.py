@@ -65,12 +65,30 @@ def step(s, price, high, now):
     return f"SAFETY EXIT @ {price:,.2f}  loss ${pnl:+.2f}  now trading ${s['cash']:.2f}"
 
 
+def usd(x):
+    return f"{'+' if x >= 0 else '-'}${abs(x):.2f}"
+
+
+def daily_profit(lines):
+    """Locked-in profit per UTC day, added up from the SELL / SAFETY EXIT lines in trades.log."""
+    days = {}
+    for line in lines:
+        if "profit $" in line or "loss $" in line:
+            days[line[:10]] = days.get(line[:10], 0) + float(line.split("$")[1].split()[0])
+    return days
+
+
 def report(s, price):
     """Write README.md, the scoreboard shown on the GitHub page."""
     worth = s["cash"] + s["saved"] + s["btc"] * price * (1 - FEE)
     profit = worth - START_CASH
     doing = f"holding BTC (bought for ${s['cost']:.2f})" if s["btc"] else "waiting to buy"
-    recent = LOG.read_text().splitlines()[::-1][:10] if LOG.exists() else ["no trades yet"]
+    lines = LOG.read_text().splitlines() if LOG.exists() else []
+    recent = lines[::-1][:10] or ["no trades yet"]
+    days = daily_profit(lines)
+    today = f"{datetime.now(timezone.utc):%Y-%m-%d}"
+    ran = (datetime.fromisoformat(today) - datetime.fromisoformat(lines[0][:10])).days + 1 if lines else 1
+    avg = sum(days.values()) / ran  # over every day since the first trade, not just days with sells
     README.write_text(
         "# BTC paper bot\n\n"
         "**Fake money test.** Real Bitcoin prices from Binance, no real money used.\n\n"
@@ -78,11 +96,15 @@ def report(s, price):
         f"| Started with | ${START_CASH:.2f} |\n"
         f"| Worth now | **${worth:.2f}** |\n"
         f"| Saved (profit set aside, never traded) | **${s['saved']:.2f}** |\n"
-        f"| Profit | **{'+' if profit >= 0 else '-'}${abs(profit):.2f}** ({profit / START_CASH:+.2%}) |\n"
+        f"| Total profit (if sold now) | **{usd(profit)}** ({profit / START_CASH:+.2%}) |\n"
+        f"| Profit today (from sells, UTC) | **{usd(days.get(today, 0))}** |\n"
+        f"| Average per day | {usd(avg)} |\n"
         f"| Wins / safety exits | {s['wins']} / {s['losses']} |\n"
         f"| Right now | {doing} |\n"
         f"| BTC price | ${price:,.2f} |\n"
         f"| Updated | {datetime.now(timezone.utc):%Y-%m-%d %H:%M} UTC (every hour + every trade) |\n\n"
+        "## Profit per day (from sells, UTC)\n\n| Day | Profit |\n|---|---|\n"
+        + "".join(f"| {d} | {usd(p)} |\n" for d, p in sorted(days.items(), reverse=True)) + "\n"
         "## Last 10 trades (newest first)\n\n```\n" + "\n".join(recent) + "\n```\n\n"
         "## How it works\n\n"
         f"- Trades ${START_CASH:.0f} each time; profit above that is set aside, never traded\n"
@@ -139,6 +161,11 @@ def test():
     assert step(s, 90_000, 100_000, 10) is None                    # cooldown blocks rebuy
     assert step(s, 90_000, 100_000, COOLDOWN + 1).startswith("BUY")
     assert s["cost"] < 50 and s["saved"] > 0.10                    # saved money never traded
+    d = daily_profit(["2026-09-29 08:22 UTC  SELL @ 84,368.00  profit $+0.11  saved $0.11",
+                      "2026-09-29 09:00 UTC  BUY  0.0006 BTC @ 84,000.00 for $50.00",
+                      "2026-09-29 11:56 UTC  SAFETY EXIT @ 82,000.00  loss $-2.14  now trading $47.86",
+                      "2026-09-30 12:35 UTC  SELL @ 84,793.75  profit $+0.23  saved $0.34"])
+    assert {k: round(v, 2) for k, v in d.items()} == {"2026-09-29": -2.03, "2026-09-30": 0.23}
     print("all tests passed")
 
 
