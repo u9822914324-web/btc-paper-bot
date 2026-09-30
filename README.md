@@ -6,11 +6,12 @@
 |---|---|
 | Started with | $50.00 |
 | Worth now | **$50.08** |
-| Profit | **+$0.08** (+0.16%) |
+| Saved (profit set aside, never traded) | **$0.00** |
+| Profit | **+$0.08** (+0.15%) |
 | Wins / safety exits | 6 / 0 |
 | Right now | holding BTC (bought for $50.81) |
-| BTC price | $84,321.91 |
-| Updated | 2026-09-30 16:15 UTC (every hour + every trade) |
+| BTC price | $84,314.00 |
+| Updated | 2026-09-30 16:57 UTC (every hour + every trade) |
 
 ## Last 10 trades (newest first)
 
@@ -29,6 +30,7 @@
 
 ## How it works
 
+- Trades $50 each time; profit above that is set aside, never traded
 - Buys when BTC drops 0.3% below its 1-hour high
 - Sells when up $0.10 after fees (0.1% per trade)
 - Safety exit if down $2.00, then waits 60 min before buying again
