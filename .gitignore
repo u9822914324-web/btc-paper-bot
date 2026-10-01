@@ -1,1 +1,6 @@
 __pycache__/
+# real-money files stay on your PC only
+live-state.json
+live-trades.log
+live-scoreboard.md
+binance-keys.txt
