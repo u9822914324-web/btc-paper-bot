@@ -155,14 +155,16 @@ def live_sell(qty, price):
 BUY, SELL = paper_buy, paper_sell  # go_live() swaps in the real ones
 
 
-def step(s, price, high, now):
+def step(s, price, high, now, avg=0.0):
     """One price check. Updates state s, returns a trade message or None.
 
+    avg: a longer-term average price. The bot won't buy while BTC is under it (a falling
+    market). 0 = no trend check.
     Binance only sells whole 0.00001 BTC steps, so a few crumbs of BTC can stay behind after a sell.
     They keep their share of the cost in s["cost"] and get sold with the next trade.
     """
     if not s["holding"]:
-        if now < s["wait_until"] or price > high * (1 - DIP) or s["cash"] < 10:
+        if now < s["wait_until"] or price > high * (1 - DIP) or price < avg or s["cash"] < 10:
             return None
         got, spent = BUY(s["cash"], price)
         s["btc"] += got
