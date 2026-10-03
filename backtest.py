@@ -1,29 +1,38 @@
 """Replay the bot on past real BTC/EUR prices with different settings. Fake money only.
 
 Run: python backtest.py [days]      (default 30)
+     python backtest.py 2025        (a whole calendar year)
 Each setting is also scored on the first and second half separately: a setting that only
 wins in one half got lucky, not good.
 """
 import json, sys, time, urllib.request
+from datetime import datetime, timezone
 import bot
 
-DAYS = int(sys.argv[1]) if len(sys.argv) > 1 else 30
+ARG = sys.argv[1] if len(sys.argv) > 1 else "30"
+if len(ARG) == 4:  # a year
+    since = int(datetime(int(ARG), 1, 1, tzinfo=timezone.utc).timestamp() * 1000)
+    until = int(datetime(int(ARG) + 1, 1, 1, tzinfo=timezone.utc).timestamp() * 1000)
+else:
+    until = int(time.time() * 1000)
+    since = until - int(ARG) * 86_400_000
+DAYS = (until - since) / 86_400_000
 URL = "https://api.binance.com/api/v3/klines?symbol=BTCEUR&interval=1m&limit=1000&startTime="
 
-now = int(time.time() * 1000)
-c, start = [], now - DAYS * 86_400_000
-while start < now:
+c, start = [], since
+while start < until:
     batch = json.load(urllib.request.urlopen(URL + str(start), timeout=10))
     if not batch:
         break
-    c += batch
+    c += [k for k in batch if k[0] < until]
     start = batch[-1][0] + 60_000
 t = [k[0] / 1000 for k in c]
 close = [float(k[4]) for k in c]
 hi = [float(k[2]) for k in c]
 high1h = [max(hi[max(0, i - 59):i + 1]) for i in range(len(c))]
-print(f"{len(c)} minutes ({DAYS} days) of real BTC/EUR: €{close[0]:,.0f} -> €{close[-1]:,.0f} "
-      f"({close[-1] / close[0] - 1:+.1%})\n")
+print(f"{len(c)} minutes ({DAYS:.0f} days) of real BTC/EUR: €{close[0]:,.0f} -> €{close[-1]:,.0f} "
+      f"({close[-1] / close[0] - 1:+.1%})")
+print(f"Just buying €50 of BTC and holding it: €{50 * (close[-1] / close[0] - 1):+.2f}\n")
 
 
 def run(dip, take, stop, a, b):
