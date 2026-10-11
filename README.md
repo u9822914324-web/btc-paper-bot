@@ -12,8 +12,8 @@
 | Average per day | -$0.03 |
 | Wins / safety exits | 12 / 1 |
 | Right now | waiting to buy |
-| BTC price | $84,173.02 |
-| Updated | 2026-10-11 17:36 UTC (every hour + every trade) |
+| BTC price | $83,727.98 |
+| Updated | 2026-10-11 23:36 UTC (every hour + every trade) |
 
 ## Profit per day (from sells, UTC)
 
