@@ -5,15 +5,15 @@
 | | |
 |---|---|
 | Started with | $50.00 |
-| Worth now | **$47.08** |
+| Worth now | **$47.06** |
 | Saved (profit set aside, never traded) | **$1.36** |
-| Total profit (if sold now) | **-$2.92** (-5.84%) |
+| Total profit (if sold now) | **-$2.94** (-5.88%) |
 | Profit today (from sells, UTC) | **+$0.00** |
 | Average per day | -$0.10 |
 | Wins / safety exits | 27 / 3 |
 | Right now | holding BTC (bought for $45.90) |
-| BTC price | $81,407.00 |
-| Updated | 2026-10-23 20:41 UTC (every hour + every trade) |
+| BTC price | $81,372.05 |
+| Updated | 2026-10-23 21:41 UTC (every hour + every trade) |
 
 ## Profit per day (from sells, UTC)
 
