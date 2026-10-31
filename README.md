@@ -13,7 +13,7 @@
 | Wins / safety exits | 29 / 4 |
 | Right now | holding BTC (bought for $43.67) |
 | BTC price | $77,492.00 |
-| Updated | 2026-10-31 13:31 UTC (every hour + every trade) |
+| Updated | 2026-10-31 14:31 UTC (every hour + every trade) |
 
 ## Profit per day (from sells, UTC)
 
